@@ -2,6 +2,12 @@ const { spawnSync } = require('child_process');
 const os = require('os');
 const path = require('path');
 
+// Native C++ modules currently target macOS (Objective-C++ / Carbon / CoreAudio)
+if (process.platform !== 'darwin') {
+  console.log(`[rebuild-native] Skipping native macOS addon rebuild on ${process.platform}.`);
+  process.exit(0);
+}
+
 const electronVersion = require('electron/package.json').version;
 const nodeGyp = require.resolve('node-gyp/bin/node-gyp.js');
 const result = spawnSync(process.execPath, [nodeGyp, 'rebuild'], {

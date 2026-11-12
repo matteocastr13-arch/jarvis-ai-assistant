@@ -1,3 +1,4 @@
+import { IAudioRecorder } from './audio-recorder.interface';
 import { Logger } from '../core/logger';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -6,7 +7,7 @@ import * as fs from 'fs';
  * Native macOS Audio Recorder using AVFoundation
  * No FFmpeg dependency - works on every Mac
  */
-export class NativeAudioRecorder {
+export class NativeAudioRecorder implements IAudioRecorder {
   private nativeModule: any = null;
   private isRecording = false;
   private audioChunks: Buffer[] = [];
@@ -18,6 +19,10 @@ export class NativeAudioRecorder {
   private totalOutputBytes = 0;
 
   constructor() {
+    if (process.platform !== 'darwin') {
+      throw new Error("Native audio recording is only supported on macOS (platform: " + process.platform + ")");
+    }
+
     try {
       // Try to load the native module with static imports first
       let nativeModule = null;
@@ -441,6 +446,10 @@ export class NativeAudioRecorder {
    * Check if native audio recording is available
    */
   static isAvailable(): boolean {
+    if (process.platform !== 'darwin') {
+      return false;
+    }
+
     try {
       // Try multiple possible paths for the native module
       const possiblePaths = [
