@@ -30,7 +30,8 @@
     "test:performance": "jest --testPathPatterns=performance",
     "test:robustness": "node scripts/test-robustness.js",
     "test:launch": "node scripts/launch-readiness.js",
-    "install": "npm run build:native"
+    "install": "npm run build:native",
+    "build:win": "npm run build && electron-builder --win nsis --x64"
   },
   "keywords": [
     "electron",
@@ -239,6 +240,13 @@
       "owner": "",
       "repo": "jarvis-ai-assistant",
       "releaseType": "release"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "assets/jarvis-logo.png"
     }
   },
   "browserslist": {

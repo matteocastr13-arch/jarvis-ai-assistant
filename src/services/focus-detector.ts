@@ -41,6 +41,11 @@ export class FocusDetector {
    * This uses macOS accessibility APIs to determine the focused element type
    */
   async isInTextInputField(): Promise<boolean> {
+    if (process.platform === 'win32') {
+      // On Windows, text pasting works globally across active applications
+      return true;
+    }
+
     try {
       const script = `
         tell application "System Events"

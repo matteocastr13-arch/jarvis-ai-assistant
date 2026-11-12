@@ -22,6 +22,9 @@ const FAST_CACHE_DURATION = 30000; // 30 seconds
  * Check if the app has system permissions for accessibility (with caching)
  */
 export async function checkSystemPermissions(): Promise<boolean> {
+  if (process.platform === 'win32') {
+    return true;
+  }
   const now = Date.now();
 
   // Use cached result if check was recent
@@ -98,6 +101,17 @@ export function forcePermissionRefresh(): void {
  */
 export function showFailureNotification(message: string): void {
   try {
+    if (process.platform === 'win32') {
+      try {
+        const { Notification } = require('electron');
+        if (Notification.isSupported()) {
+          new Notification({ title: 'Jarvis - Paste Failed', body: message }).show();
+        }
+      } catch (e) {
+        Logger.warning('Windows notification error:', e);
+      }
+      return;
+    }
     const notificationScript = `
       display notification "${message}" with title "Jarvis - Paste Failed" sound name "Glass"
     `;
@@ -113,6 +127,17 @@ export function showFailureNotification(message: string): void {
  */
 export function showSuccessNotification(message: string): void {
   try {
+    if (process.platform === 'win32') {
+      try {
+        const { Notification } = require('electron');
+        if (Notification.isSupported()) {
+          new Notification({ title: 'Jarvis', body: message }).show();
+        }
+      } catch (e) {
+        Logger.warning('Windows notification error:', e);
+      }
+      return;
+    }
     const notificationScript = `
       display notification "${message}" with title "Jarvis" sound name "Hero"
     `;
@@ -127,6 +152,10 @@ export function showSuccessNotification(message: string): void {
  * Get the currently active application name
  */
 export async function getActiveApp(): Promise<string | null> {
+  if (process.platform === 'win32') {
+    return 'WindowsApp';
+  }
+
   return new Promise((resolve) => {
     const applescript = `
       tell application "System Events"
@@ -205,6 +234,10 @@ export async function fastPasteMethod(text: string): Promise<boolean> {
  * Paste method with direct keystroke
  */
 export async function pasteWithDirectKeystroke(text: string): Promise<boolean> {
+  if (process.platform === 'win32') {
+    return simpleFastPaste(text);
+  }
+
   return new Promise((resolve) => {
     const tempFile = `/tmp/jarvis_paste_direct_${Date.now()}.txt`;
 
@@ -264,6 +297,10 @@ export async function pasteWithDirectKeystroke(text: string): Promise<boolean> {
  * Paste method with focus verification
  */
 export async function pasteWithFocusCheck(text: string): Promise<boolean> {
+  if (process.platform === 'win32') {
+    return simpleFastPaste(text);
+  }
+
   return new Promise((resolve) => {
     const tempFile = `/tmp/jarvis_paste_focus_${Date.now()}.txt`;
 
@@ -589,6 +626,33 @@ export async function directTypeMethod(text: string): Promise<boolean> {
  * Ultra-fast paste method for simple text - no file I/O, minimal delays
  */
 export async function simpleFastPaste(text: string): Promise<boolean> {
+  if (process.platform === 'win32') {
+    return new Promise((resolve) => {
+      try {
+        const { clipboard } = require('electron');
+        clipboard.writeText(text);
+
+        const ps = spawn('powershell', [
+          '-NoProfile',
+          '-Command',
+          "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('^v')"
+        ], { windowsHide: true });
+
+        ps.on('close', (code) => {
+          resolve(code === 0);
+        });
+
+        setTimeout(() => {
+          ps.kill();
+          resolve(true);
+        }, 2000);
+      } catch (err) {
+        Logger.error('❌ [PasteHelper] Windows simpleFastPaste failed:', err);
+        resolve(false);
+      }
+    });
+  }
+
   return new Promise((resolve) => {
     const applescript = `
       tell application "System Events"

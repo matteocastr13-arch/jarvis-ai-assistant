@@ -13,6 +13,11 @@ export class FnKeyMonitor {
   }
 
   start(): boolean {
+    if (process.platform !== 'darwin') {
+      console.log('[FnKeyMonitor] Native macOS Fn key monitor disabled on ' + process.platform);
+      return false;
+    }
+
     if (this.isActive) {
       try { console.log('Fn key monitor already running'); } catch (e) { /* ignore */ }
       return false;

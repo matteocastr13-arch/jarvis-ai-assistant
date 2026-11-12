@@ -27,6 +27,11 @@ export class UniversalKeyService {
   }
 
   private loadNativeModule(): boolean {
+    if (process.platform === 'win32') {
+      Logger.info('⚙️ [UniversalKeyService] Using Electron globalShortcut on Windows');
+      return true;
+    }
+
     if (this.keyMonitor) return true;
 
     try {
@@ -99,6 +104,53 @@ export class UniversalKeyService {
   }
 
   private async startAsync(keyName: string): Promise<boolean> {
+    if (process.platform === 'win32') {
+      try {
+        const { globalShortcut } = require('electron');
+        this.currentKey = keyName;
+
+        let accelerator = 'Control+Space';
+        if (keyName === 'fn') {
+          accelerator = 'Control+Space';
+        } else if (keyName === 'option' || keyName === 'alt') {
+          accelerator = 'Alt+Space';
+        } else if (keyName === 'control' || keyName === 'ctrl') {
+          accelerator = 'Control+Space';
+        } else {
+          accelerator = keyName;
+        }
+
+        try {
+          globalShortcut.unregister(accelerator);
+        } catch (e) {}
+
+        const success = globalShortcut.register(accelerator, () => {
+          Logger.info(`🎹 [WindowsShortcut] Triggered hotkey: ${accelerator}`);
+          try {
+            this.onKeyDown?.();
+          } catch (err) {
+            Logger.error('Error in onKeyDown callback:', err);
+          }
+        });
+
+        if (success) {
+          this.isActive = true;
+          Logger.info(`✅ [WindowsShortcut] Registered global hotkey: ${accelerator}`);
+          return true;
+        } else {
+          Logger.warning(`⚠️ [WindowsShortcut] Could not register ${accelerator}, trying Alt+Space fallback`);
+          const fallback = globalShortcut.register('Alt+Space', () => {
+            this.onKeyDown?.();
+          });
+          this.isActive = fallback;
+          return fallback;
+        }
+      } catch (err) {
+        Logger.error('❌ [WindowsShortcut] Error registering shortcut on Windows:', err);
+        return false;
+      }
+    }
+
     try {
       // Check accessibility permissions
       const hasPermissions = this.keyMonitor!.checkAccessibilityPermissions();
@@ -184,6 +236,16 @@ export class UniversalKeyService {
   }
 
   stop(): void {
+    if (process.platform === 'win32') {
+      try {
+        const { globalShortcut } = require('electron');
+        globalShortcut.unregisterAll();
+      } catch (e) {}
+      this.isActive = false;
+      Logger.info('🛑 [WindowsShortcut] Global hotkey monitoring stopped');
+      return;
+    }
+
     if (this.keyMonitor && this.isActive) {
       Logger.debug(`🛑 [${this.currentKey}] Stopping key monitoring`);
 
